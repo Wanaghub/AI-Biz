@@ -175,9 +175,9 @@ textarea { resize: vertical; }
 <!-- NAV -->
 <nav class="nav">
   <div class="nav-brand">✦ AI Writing System</div>
-  <button class="nav-tab active" onclick="showPage('generator', this)">Article Generator</button>
-  <button class="nav-tab" onclick="showPage('lab', this)">Prompt Testing Lab</button>
-  <button class="nav-tab" onclick="showPage('calendar', this)">Content Calendar</button>
+  <button class="nav-tab active" onclick="showPage('generator')">Article Generator</button>
+  <button class="nav-tab" onclick="showPage('lab')">Prompt Testing Lab</button>
+  <button class="nav-tab" onclick="showPage('calendar')">Content Calendar</button>
 </nav>
 
 <!-- PAGE 1: ARTICLE GENERATOR -->
@@ -435,11 +435,11 @@ async function claudeJSON(system, user) {
   return JSON.parse(text.slice(s, e + 1));
 }
 
-function showPage(id, el) {
+function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  el.classList.add('active');
+  event.currentTarget.classList.add('active');
 }
 function showErr(id, msg) { document.getElementById(id).innerHTML = `<div class="error">${msg}</div>`; }
 function clearErr(id) { document.getElementById(id).innerHTML = ''; }
@@ -500,7 +500,7 @@ function showGenTab(tab, el) {
   document.getElementById('gen-write').style.display = tab === 'write' ? 'block' : 'none';
   document.getElementById('gen-saved').style.display = tab === 'saved' ? 'block' : 'none';
   document.querySelectorAll('.tab-inner').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  event.currentTarget.classList.add('active');
   if (tab === 'saved') renderSaved();
 }
 
