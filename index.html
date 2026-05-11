@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Writing System</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0e0b; --surface: #1a1916; --surface2: #222019; --border: #2e2b24;
+  --accent: #D4A853; --accent2: #8B6B2E; --text: #e8e4da; --muted: #7a7468; --faint: #2e2b24;
+  --c-ai: #6aabf0; --bg-ai: #6aabf018;
+  --c-ent: #5ecfa0; --bg-ent: #5ecfa018;
+  --c-mind: #b09ef5; --bg-mind: #b09ef518;
+  --c-prompt: #f0856a; --bg-prompt: #f0856a18;
+  --weak: #e07070; --bg-weak: #e0707015;
+  --strong: #5ecfa0; --bg-strong: #5ecfa015;
+}
+body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+
+/* API KEY BANNER */
+#api-banner {
+  background: #1a1500; border-bottom: 1px solid var(--accent2);
+  padding: 12px 2rem; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+#api-banner label { font-size: 12px; color: var(--accent); white-space: nowrap; font-weight: 500; }
+#api-banner input {
+  flex: 1; min-width: 260px; background: var(--surface2); border: 1px solid var(--accent2);
+  color: var(--text); font-family: monospace; font-size: 12px;
+  padding: 7px 12px; border-radius: 7px; outline: none;
+}
+#api-banner input:focus { border-color: var(--accent); }
+#api-save-btn {
+  padding: 7px 16px; font-size: 12px; font-weight: 500;
+  background: var(--accent); color: #1a1200; border: none; border-radius: 7px; cursor: pointer;
+}
+#api-save-btn:hover { opacity: .88; }
+#api-status { font-size: 12px; color: var(--strong); }
+#api-hint { font-size: 11px; color: var(--muted); width: 100%; }
+#api-hint a { color: var(--accent); }
+
+/* NAV */
+.nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
+.nav-brand { font-size: 15px; font-weight: 600; color: var(--accent); padding: 1rem 1.5rem 1rem 0; border-right: 1px solid var(--border); margin-right: 1rem; white-space: nowrap; }
+.nav-tab { padding: 1rem 1.25rem; font-size: 13px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; background: none; border-top: none; border-left: none; border-right: none; transition: all .15s; white-space: nowrap; font-family: inherit; }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.nav-tab:hover:not(.active) { color: var(--text); }
+
+/* PAGES */
+.page { display: none; padding: 2rem; max-width: 920px; margin: 0 auto; }
+.page.active { display: block; }
+h2 { font-size: 22px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+.subtitle { font-size: 13px; color: var(--muted); margin-bottom: 1.5rem; }
+
+/* COMMON */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+.field-label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+input[type=text], select, textarea {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-family: inherit; font-size: 13px;
+  padding: 9px 12px; border-radius: 8px; width: 100%; outline: none; transition: border-color .15s;
+}
+input[type=text]:focus, select:focus, textarea:focus { border-color: var(--accent2); }
+textarea { resize: vertical; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; font-size: 13px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; transition: opacity .15s; white-space: nowrap; }
+.btn:hover { opacity: .88; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #1a1200; }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--accent2); opacity: 1; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.pill { font-size: 10px; padding: 3px 9px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+.pill-ai { background: var(--bg-ai); color: var(--c-ai); }
+.pill-ent { background: var(--bg-ent); color: var(--c-ent); }
+.pill-mind { background: var(--bg-mind); color: var(--c-mind); }
+.pill-prompt { background: var(--bg-prompt); color: var(--c-prompt); }
+.error { background: #e0707015; border: 1px solid #e0707040; border-radius: 8px; padding: 12px 16px; color: var(--weak); font-size: 13px; margin-top: 10px; }
+.divider { height: 1px; background: var(--border); margin: 1.25rem 0; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.mb-sm { margin-bottom: 10px; }
+.mb-md { margin-bottom: 1.25rem; }
+.tabs-inner { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+.tab-inner { padding: 8px 16px; font-size: 13px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; transition: all .15s; margin-bottom: -1px; }
+.tab-inner.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* GENERATOR */
+.gen-grid { display: grid; grid-template-columns: 320px 1fr; gap: 1.25rem; align-items: start; }
+.pillars-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.pillar-toggle { font-size: 11px; padding: 7px 6px; text-align: center; cursor: pointer; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); background: var(--surface2); transition: all .15s; line-height: 1.3; }
+.pillar-toggle.on { border-color: var(--accent); color: var(--accent); background: #D4A85312; }
+.output-area { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; min-height: 420px; font-size: 13px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-wrap: break-word; }
+.output-placeholder { color: var(--muted); font-style: italic; }
+.word-count { font-size: 11px; color: var(--muted); text-align: right; margin-top: 6px; }
+.saved-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; }
+.saved-card-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.saved-card-meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+.saved-card-preview { font-size: 12px; color: var(--muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.empty-state { text-align: center; padding: 3rem; color: var(--muted); font-size: 14px; }
+
+/* LAB */
+.arena { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+.side { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+.side-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+.side-weak { color: var(--weak); }
+.side-strong { color: var(--strong); }
+.side-output { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; min-height: 150px; font-size: 12px; line-height: 1.7; color: var(--text); white-space: pre-wrap; margin-top: 10px; }
+.side-output.empty { color: var(--muted); font-style: italic; }
+.btn-weak { background: var(--bg-weak); color: var(--weak); border: 1px solid #e0707040; }
+.btn-strong { background: var(--bg-strong); color: var(--strong); border: 1px solid #5ecfa040; }
+.analysis-box { background: var(--surface); border: 1px solid var(--accent2); border-radius: 12px; padding: 1.25rem; display: none; margin-top: 1rem; }
+.score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+.score-card { border-radius: 10px; padding: 12px; text-align: center; }
+.score-weak-card { background: var(--bg-weak); border: 1px solid #e0707030; }
+.score-strong-card { background: var(--bg-strong); border: 1px solid #5ecfa030; }
+.score-num { font-size: 28px; font-weight: 600; }
+.score-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.analysis-text { font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+.tpl-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 1.25rem; }
+.tpl-btn { text-align: left; cursor: pointer; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--muted); background: var(--surface); transition: all .15s; font-size: 12px; font-family: inherit; }
+.tpl-btn:hover { border-color: var(--accent2); color: var(--text); }
+.tpl-btn strong { display: block; color: var(--text); margin-bottom: 2px; font-size: 12px; }
+.pillar-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+.pf-chip { font-size: 11px; padding: 4px 10px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); background: var(--surface2); transition: all .15s; }
+.pf-chip.on { border-color: var(--accent); color: var(--accent); background: #D4A85312; }
+
+/* CALENDAR */
+.cal-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.view-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-left: auto; }
+.vt { padding: 7px 14px; font-size: 12px; cursor: pointer; color: var(--muted); background: var(--surface); border: none; font-family: inherit; }
+.vt.on { background: var(--accent); color: #1a1200; font-weight: 500; }
+.stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1.5rem; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+.stat-n { font-size: 22px; font-weight: 600; color: var(--accent); }
+.stat-l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+.cal-list { display: flex; flex-direction: column; gap: 8px; }
+.cal-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: start; cursor: pointer; transition: border-color .15s; }
+.cal-item:hover { border-color: var(--accent2); }
+.cal-day-num { font-size: 22px; font-weight: 600; line-height: 1; }
+.cal-day-name { font-size: 10px; color: var(--muted); }
+.cal-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.cal-hook { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.cal-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.cal-fmt { font-size: 10px; color: var(--muted); }
+.week-block { margin-bottom: 1.5rem; }
+.wk-label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.wk-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; }
+.wk-head { font-size: 10px; color: var(--muted); text-align: center; padding: 3px 0; text-transform: uppercase; }
+.wk-cell { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px; min-height: 80px; cursor: pointer; transition: border-color .15s; }
+.wk-cell:hover { border-color: var(--accent2); }
+.wk-cell.rest { cursor: default; } .wk-cell.rest:hover { border-color: var(--border); }
+.wk-num { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+.wk-title { font-size: 10px; line-height: 1.35; color: var(--text); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.wk-bar { height: 3px; border-radius: 2px; margin-top: 6px; }
+.wk-rest { font-size: 10px; color: var(--faint); text-align: center; margin-top: 22px; }
+.detail-panel { background: var(--surface2); border: 1px solid var(--accent2); border-radius: 12px; padding: 1.5rem; margin-top: 1rem; display: none; }
+.det-head { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; }
+.det-title { font-size: 17px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.det-meta { font-size: 11px; color: var(--muted); margin-top: 5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.det-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; }
+.det-sec { margin-bottom: 12px; }
+.det-lbl { font-size: 10px; font-weight: 500; color: var(--accent2); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+.det-val { font-size: 13px; color: var(--text); line-height: 1.6; }
+.prog-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; text-align: center; }
+.prog-label { font-size: 14px; color: var(--muted); margin-bottom: 1rem; }
+.prog-bar { height: 4px; background: var(--faint); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+.prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .5s ease; }
+.prog-step { font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">✦ AI Writing System</div>
+  <button class="nav-tab active" onclick="showPage('generator')">Article Generator</button>
+  <button class="nav-tab" onclick="showPage('lab')">Prompt Testing Lab</button>
+  <button class="nav-tab" onclick="showPage('calendar')">Content Calendar</button>
+</nav>
+
+<!-- PAGE 1: ARTICLE GENERATOR -->
+<div class="page active" id="page-generator">
+  <h2>Article Generator</h2>
+  <p class="subtitle">Write full Medium articles using your 5-pillar Prompt Psychology system</p>
+  <div class="tabs-inner">
+    <button class="tab-inner active" onclick="showGenTab('write', this)">Write Article</button>
+    <button class="tab-inner" onclick="showGenTab('saved', this)">Saved Articles</button>
+  </div>
+
+  <div id="gen-write">
+    <div class="gen-grid">
+      <div class="card">
+        <div class="mb-sm">
+          <div class="field-label">Topic or title</div>
+          <input type="text" id="g-topic" placeholder="e.g. Why your prompts keep failing">
+        </div>
+        <div class="mb-sm">
+          <div class="field-label">Niche</div>
+          <select id="g-niche">
+            <option>AI Business Writing</option>
+            <option>Entrepreneurship</option>
+            <option>Mindset</option>
+            <option>Psychology of Prompting</option>
+            <option value="Crossover blend of all niches">Crossover (blend all)</option>
+          </select>
+        </div>
+        <div class="mb-sm">
+          <div class="field-label">Format</div>
+          <select id="g-format">
+            <option value="personal story with results">Story + Results</option>
+            <option value="numbered listicle with practical takeaways">Listicle</option>
+            <option value="deep conceptual explainer">Deep Dive</option>
+            <option value="contrarian take that challenges common assumptions">Contrarian</option>
+            <option value="practical step-by-step how-to guide">How-To</option>
+          </select>
+        </div>
+        <div class="mb-sm">
+          <div class="field-label">Psychology pillars</div>
+          <div class="pillars-grid">
+            <div class="pillar-toggle on" onclick="this.classList.toggle('on')">Framing</div>
+            <div class="pillar-toggle on" onclick="this.classList.toggle('on')">Specificity</div>
+            <div class="pillar-toggle on" onclick="this.classList.toggle('on')">Priming</div>
+            <div class="pillar-toggle" onclick="this.classList.toggle('on')">Constraints</div>
+            <div class="pillar-toggle on" onclick="this.classList.toggle('on')">Emotional IQ</div>
+            <div class="pillar-toggle" onclick="this.classList.toggle('on')">All 5</div>
+          </div>
+        </div>
+        <div class="mb-sm">
+          <div class="field-label">Extra context (optional)</div>
+          <textarea id="g-context" rows="3" placeholder="Specific angle, story, or instructions..."></textarea>
+        </div>
+        <button class="btn btn-primary" id="g-btn" onclick="generateArticle()" style="width:100%">✦ Generate Article</button>
+        <div id="g-error"></div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="field-label" style="margin:0" id="g-label">Article appears here</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" id="g-save-btn" onclick="saveArticle()" style="display:none">Save</button>
+            <button class="btn btn-ghost btn-sm" id="g-copy-btn" onclick="copyArticle()" style="display:none">Copy</button>
+          </div>
+        </div>
+        <div class="output-area" id="g-output"><span class="output-placeholder">Fill in the form and click Generate Article.</span></div>
+        <div class="word-count" id="g-words"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="gen-saved" style="display:none">
+    <div id="saved-list"><div class="empty-state">No saved articles yet.</div></div>
+  </div>
+</div>
+
+<!-- PAGE 2: PROMPT TESTING LAB -->
+<div class="page" id="page-lab">
+  <h2>Prompt Testing Lab</h2>
+  <p class="subtitle">Compare weak vs strong prompts — see the psychology gap in real time</p>
+
+  <div class="field-label mb-sm">Quick start templates</div>
+  <div class="tpl-grid">
+    <button class="tpl-btn" onclick="loadTpl('email')"><strong>Business Email</strong>Write me a sales email</button>
+    <button class="tpl-btn" onclick="loadTpl('linkedin')"><strong>LinkedIn Post</strong>Write a LinkedIn post</button>
+    <button class="tpl-btn" onclick="loadTpl('pitch')"><strong>Investor Pitch</strong>Write a pitch</button>
+    <button class="tpl-btn" onclick="loadTpl('mindset')"><strong>Mindset Article</strong>Write about resilience</button>
+    <button class="tpl-btn" onclick="loadTpl('prompting')"><strong>Prompting Tip</strong>Explain prompting</button>
+    <button class="tpl-btn" onclick="loadTpl('bio')"><strong>Author Bio</strong>Write my bio</button>
+  </div>
+  <div class="divider"></div>
+  <div class="mb-md">
+    <div class="field-label">Topic / extra context</div>
+    <input type="text" id="lab-topic" placeholder="e.g. My SaaS for freelancers">
+  </div>
+  <div class="field-label mb-sm">Pillars to analyse</div>
+  <div class="pillar-filter">
+    <span class="pf-chip on" data-p="Framing">Framing</span>
+    <span class="pf-chip on" data-p="Specificity">Specificity</span>
+    <span class="pf-chip on" data-p="Priming">Priming</span>
+    <span class="pf-chip" data-p="Constraints">Constraints</span>
+    <span class="pf-chip on" data-p="Emotional IQ">Emotional IQ</span>
+  </div>
+  <div class="arena">
+    <div class="side">
+      <div class="side-label side-weak">✕ Weak Prompt</div>
+      <textarea id="lab-weak" rows="4" placeholder="Basic, vague prompt...&#10;e.g. Write me a business email"></textarea>
+      <div style="margin-top:8px">
+        <button class="btn btn-weak btn-sm" id="lab-btn-w" onclick="runOne('weak')">▶ Run weak only</button>
+      </div>
+      <div class="side-output empty" id="lab-out-weak">Output will appear here...</div>
+    </div>
+    <div class="side">
+      <div class="side-label side-strong">✓ Strong Prompt</div>
+      <textarea id="lab-strong" rows="4" placeholder="Psychology-powered prompt...&#10;e.g. You are a confident founder writing to a hesitant investor..."></textarea>
+      <div style="margin-top:8px">
+        <button class="btn btn-strong btn-sm" id="lab-btn-s" onclick="runOne('strong')">▶ Run strong only</button>
+      </div>
+      <div class="side-output empty" id="lab-out-strong">Output will appear here...</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" id="lab-btn-both" onclick="runBoth()" style="width:100%;justify-content:center">✦ Run Both + Get Psychology Analysis</button>
+  <div id="lab-error"></div>
+  <div class="analysis-box" id="analysis-box">
+    <div class="field-label mb-sm">Psychology Analysis</div>
+    <div class="score-grid">
+      <div class="score-card score-weak-card"><div class="score-num" style="color:var(--weak)" id="score-w">—</div><div class="score-lbl">Weak score</div></div>
+      <div class="score-card score-strong-card"><div class="score-num" style="color:var(--strong)" id="score-s">—</div><div class="score-lbl">Strong score</div></div>
+    </div>
+    <div class="analysis-text" id="analysis-text"></div>
+    <div class="divider"></div>
+    <button class="btn btn-ghost btn-sm" onclick="copyAnalysis()">Copy Analysis</button>
+  </div>
+</div>
+
+<!-- PAGE 3: CALENDAR -->
+<div class="page" id="page-calendar">
+  <h2>30-Day Content Calendar</h2>
+  <p class="subtitle">AI-generated publishing schedule across all 4 niches</p>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--c-ai)"></div>AI Business Writing</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--c-ent)"></div>Entrepreneurship</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--c-mind)"></div>Mindset</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--c-prompt)"></div>Psych of Prompting</div>
+  </div>
+  <div class="cal-controls">
+    <select id="cal-freq">
+      <option value="3">3 articles / week</option>
+      <option value="4">4 articles / week</option>
+      <option value="2">2 articles / week</option>
+      <option value="5">5 articles / week</option>
+    </select>
+    <select id="cal-month">
+      <option>May 2026</option><option>June 2026</option><option>July 2026</option>
+    </select>
+    <button class="btn btn-primary" id="cal-btn" onclick="generateCal()">✦ Generate Calendar</button>
+    <div class="view-toggle">
+      <button class="vt on" id="vt-list" onclick="setCalView('list')">List</button>
+      <button class="vt" id="vt-week" onclick="setCalView('week')">Week</button>
+    </div>
+  </div>
+  <div class="stats-row" id="cal-stats" style="display:none">
+    <div class="stat"><div class="stat-n" id="cs-total">—</div><div class="stat-l">Total articles</div></div>
+    <div class="stat"><div class="stat-n" id="cs-pw">—</div><div class="stat-l">Per week avg</div></div>
+    <div class="stat"><div class="stat-n" id="cs-mpp">—</div><div class="stat-l">Est. MPP month 2</div></div>
+    <div class="stat"><div class="stat-n" id="cs-words">—</div><div class="stat-l">Est. total words</div></div>
+  </div>
+  <div id="cal-body"><div class="empty-state">Hit Generate Calendar to build your 30-day plan</div></div>
+  <div id="cal-error"></div>
+  <div class="detail-panel" id="cal-detail">
+    <div class="det-head">
+      <div><div class="det-title" id="d-title"></div><div class="det-meta" id="d-meta"></div></div>
+      <button class="det-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="det-sec"><div class="det-lbl">Hook</div><div class="det-val" id="d-hook"></div></div>
+    <div class="det-sec"><div class="det-lbl">Angle</div><div class="det-val" id="d-angle"></div></div>
+    <div class="det-sec"><div class="det-lbl">Psychology pillar</div><div class="det-val" id="d-pillar"></div></div>
+    <div class="det-sec"><div class="det-lbl">Format</div><div class="det-val" id="d-format"></div></div>
+    <div style="display:flex;gap:8px;padding-top:1rem;border-top:1px solid var(--border)">
+      <button class="btn btn-primary btn-sm" id="d-use">Load into Generator</button>
+      <button class="btn btn-ghost btn-sm" onclick="copyCalBrief()">Copy Brief</button>
+    </div>
+  </div>
+</div>
+
+<script>
+async function claude(system, user) {
+  const r = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, user })
+  });
+  if (!r.ok) throw new Error('Server error — please try again');
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  return d.text || '';
+}
+
+async function claudeJSON(system, user) {
+  const text = await claude(system, user);
+  const s = text.indexOf('['), e = text.lastIndexOf(']');
+  if (s === -1 || e === -1) throw new Error('No JSON returned — try again');
+  return JSON.parse(text.slice(s, e + 1));
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function showErr(id, msg) { document.getElementById(id).innerHTML = `<div class="error">${msg}</div>`; }
+function clearErr(id) { document.getElementById(id).innerHTML = ''; }
+const pillClass = n => ({'AI Business Writing':'pill-ai','Entrepreneurship':'pill-ent','Mindset':'pill-mind','Psychology of Prompting':'pill-prompt'}[n]||'pill-ai');
+const barColor = n => ({'AI Business Writing':'var(--c-ai)','Entrepreneurship':'var(--c-ent)','Mindset':'var(--c-mind)','Psychology of Prompting':'var(--c-prompt)'}[n]||'var(--c-ai)');
+const shortN = n => n === 'Psychology of Prompting' ? 'Psych of Prompting' : n;
+
+// ── ARTICLE GENERATOR ────────────────────────────────────
+let savedArticles = JSON.parse(localStorage.getItem('saved-articles') || '[]');
+let currentArticle = '';
+
+const ART_SYS = `You are an expert Medium article writer for AI business writing, entrepreneurship, mindset, and the psychology of prompting. Audience: ambitious founders and professionals aged 28–45.
+Style: direct, confident, no filler words, punchy sentences, no corporate jargon, no clichés.
+Structure: strong 2-sentence hook, ## headers, 1200–1600 words, powerful closing line.
+Weave in the 5 pillars of Prompt Psychology naturally. Write in clean Markdown. No preamble. Just the article.`;
+
+async function generateArticle() {
+  const topic = document.getElementById('g-topic').value.trim();
+  if (!topic) { showErr('g-error', 'Please enter a topic first.'); return; }
+  clearErr('g-error');
+  const niche = document.getElementById('g-niche').value;
+  const format = document.getElementById('g-format').value;
+  const context = document.getElementById('g-context').value.trim();
+  const pillars = [...document.querySelectorAll('.pillar-toggle.on')].map(el => el.textContent).join(', ');
+  const btn = document.getElementById('g-btn');
+  btn.disabled = true; btn.textContent = '⟳ Writing...';
+  document.getElementById('g-output').innerHTML = '<span class="output-placeholder">Claude is writing your article...</span>';
+  document.getElementById('g-label').textContent = 'Writing...';
+  document.getElementById('g-save-btn').style.display = 'none';
+  document.getElementById('g-copy-btn').style.display = 'none';
+  document.getElementById('g-words').textContent = '';
+  try {
+    const text = await claude(ART_SYS, `Niche: ${niche}\nTopic: ${topic}\nFormat: ${format}\nPillars: ${pillars}${context ? '\nExtra: ' + context : ''}\n\nWrite the full article now.`);
+    currentArticle = text;
+    document.getElementById('g-output').textContent = text;
+    const wc = text.split(/\s+/).length;
+    document.getElementById('g-words').textContent = `${wc} words · ~${Math.ceil(wc/200)} min read`;
+    document.getElementById('g-label').textContent = 'Article ready ✓';
+    document.getElementById('g-save-btn').style.display = 'inline-flex';
+    document.getElementById('g-copy-btn').style.display = 'inline-flex';
+  } catch(e) { showErr('g-error', '⚠ ' + e.message); document.getElementById('g-label').textContent = 'Error'; }
+  btn.disabled = false; btn.textContent = '✦ Generate Article';
+}
+
+function saveArticle() {
+  if (!currentArticle) return;
+  const art = { id: Date.now(), title: document.getElementById('g-topic').value.trim(), niche: document.getElementById('g-niche').value, content: currentArticle, date: new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}), words: currentArticle.split(/\s+/).length };
+  savedArticles.unshift(art);
+  localStorage.setItem('saved-articles', JSON.stringify(savedArticles));
+  document.getElementById('g-label').textContent = '✓ Saved!';
+}
+
+function copyArticle() {
+  navigator.clipboard.writeText(currentArticle).then(() => { document.getElementById('g-label').textContent = '✓ Copied!'; setTimeout(() => document.getElementById('g-label').textContent = 'Article ready ✓', 2000); });
+}
+
+function showGenTab(tab, el) {
+  document.getElementById('gen-write').style.display = tab === 'write' ? 'block' : 'none';
+  document.getElementById('gen-saved').style.display = tab === 'saved' ? 'block' : 'none';
+  document.querySelectorAll('.tab-inner').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (tab === 'saved') renderSaved();
+}
+
+function renderSaved() {
+  const el = document.getElementById('saved-list');
+  if (!savedArticles.length) { el.innerHTML = '<div class="empty-state">No saved articles yet.</div>'; return; }
+  el.innerHTML = savedArticles.map((a, i) => `
+    <div class="saved-card">
+      <div class="saved-card-title">${a.title}</div>
+      <div class="saved-card-meta">
+        <span class="pill ${pillClass(a.niche)}">${shortN(a.niche)}</span>
+        <span>${a.date}</span><span>·</span><span>${a.words} words</span>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="copyIdx(${i})">Copy</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteArt(${i})">Delete</button>
+      </div>
+      <div class="saved-card-preview">${a.content.slice(0,200)}...</div>
+    </div>`).join('');
+}
+
+function copyIdx(i) { navigator.clipboard.writeText(savedArticles[i].content).then(() => alert('Copied!')); }
+function deleteArt(i) { if (!confirm('Delete?')) return; savedArticles.splice(i,1); localStorage.setItem('saved-articles', JSON.stringify(savedArticles)); renderSaved(); }
+
+// ── PROMPT TESTING LAB ───────────────────────────────────
+const TPLS = {
+  email: { weak:'Write me a sales email.', strong:'You are a confident founder who genuinely believes your product saves freelancers 10 hours a week. Write a cold email to a freelance designer who has never heard of you. Warm but direct — no desperation. Open with a specific pain point. Under 120 words. One clear CTA.' },
+  linkedin: { weak:'Write a LinkedIn post about entrepreneurship.', strong:'Write a LinkedIn post for bootstrapped founders aged 28–40 tired of corporate life. Open with a counterintuitive statement. Short punchy lines. No hashtags. No emojis. Under 150 words. End with a question that makes them reflect on their own journey.' },
+  pitch: { weak:'Write an investor pitch.', strong:'Advise a first-time founder with $5k MRR SaaS pitching to a seed VC. Write a 90-second verbal pitch opening with the problem, not the product. Tone: quiet confidence — not excitement, not desperation. Every sentence earns its place.' },
+  mindset: { weak:'Write about resilience for entrepreneurs.', strong:'Write a mindset piece for founders who just had their worst month. Do not give generic motivation. Reframe failure as diagnostic data. Speak to someone smart enough to know inspirational quotes won\'t help. Direct, honest. 1,200 words max.' },
+  prompting: { weak:'Explain how to write better prompts.', strong:'Write for business writers who think prompting is just about clever wording. Challenge that. Explain why vague prompts produce mediocre output using cognitive bias theory. Give 3 concrete before/after examples from real business scenarios. Smart, slightly provocative.' },
+  bio: { weak:'Write my author bio.', strong:'Write a third-person author bio for a Medium writer specialising in AI business writing, entrepreneurship, and the psychology of prompting. Establish authority without arrogance, hint at the prompt psychology angle, end with a line that creates curiosity. Under 80 words.' }
+};
+
+function loadTpl(k) { document.getElementById('lab-weak').value = TPLS[k].weak; document.getElementById('lab-strong').value = TPLS[k].strong; }
+document.querySelectorAll('.pf-chip').forEach(c => c.addEventListener('click', () => c.classList.toggle('on')));
+
+const LAB_SYS = 'You are an expert writer. Respond to the prompt directly and concisely.';
+const ANLYS_SYS = 'You are a prompt psychology analyst. Score prompts and explain the gap clearly. Plain text only, no markdown headers.';
+
+async function runOne(side) {
+  const prompt = document.getElementById('lab-' + side).value.trim();
+  if (!prompt) { alert('Enter a prompt first.'); return; }
+  const outEl = document.getElementById('lab-out-' + side);
+  const btnId = side === 'weak' ? 'lab-btn-w' : 'lab-btn-s';
+  document.getElementById(btnId).disabled = true;
+  outEl.className = 'side-output'; outEl.textContent = 'Writing...';
+  clearErr('lab-error');
+  try {
+    const ctx = document.getElementById('lab-topic').value.trim();
+    outEl.textContent = await claude(LAB_SYS, prompt + (ctx ? '\n\nContext: ' + ctx : ''));
+  } catch(e) { outEl.textContent = 'Error'; showErr('lab-error', '⚠ ' + e.message); }
+  document.getElementById(btnId).disabled = false;
+}
+
+async function runBoth() {
+  const weak = document.getElementById('lab-weak').value.trim();
+  const strong = document.getElementById('lab-strong').value.trim();
+  if (!weak || !strong) { alert('Enter both prompts first.'); return; }
+  clearErr('lab-error');
+  const btn = document.getElementById('lab-btn-both');
+  const outW = document.getElementById('lab-out-weak');
+  const outS = document.getElementById('lab-out-strong');
+  btn.disabled = true; btn.textContent = '⟳ Running both prompts...';
+  outW.className = 'side-output'; outW.textContent = 'Running...';
+  outS.className = 'side-output'; outS.textContent = 'Running...';
+  document.getElementById('analysis-box').style.display = 'none';
+  const ctx = document.getElementById('lab-topic').value.trim();
+  const pillars = [...document.querySelectorAll('.pf-chip.on')].map(c => c.dataset.p).join(', ');
+  try {
+    const [wRes, sRes] = await Promise.all([
+      claude(LAB_SYS, weak + (ctx ? '\n\nContext: ' + ctx : '')),
+      claude(LAB_SYS, strong + (ctx ? '\n\nContext: ' + ctx : ''))
+    ]);
+    outW.textContent = wRes; outS.textContent = sRes;
+    btn.textContent = '⟳ Analysing psychology gap...';
+    const aRes = await claude(ANLYS_SYS, `Compare these prompts using pillars: ${pillars}.
+WEAK: "${weak}" → OUTPUT: "${wRes.slice(0,250)}"
+STRONG: "${strong}" → OUTPUT: "${sRes.slice(0,250)}"
+Give: WEAK_SCORE: X/10, STRONG_SCORE: X/10, then explain which pillars the strong used that weak missed, the single most important lesson, and how this gap becomes a Medium article. Plain text.`);
+    const wm = aRes.match(/WEAK_SCORE:\s*(\d+)/i);
+    const sm = aRes.match(/STRONG_SCORE:\s*(\d+)/i);
+    document.getElementById('score-w').textContent = wm ? wm[1] + '/10' : '?';
+    document.getElementById('score-s').textContent = sm ? sm[1] + '/10' : '?';
+    document.getElementById('analysis-text').textContent = aRes.replace(/WEAK_SCORE:.*\n?/i,'').replace(/STRONG_SCORE:.*\n?/i,'').trim();
+    document.getElementById('analysis-box').style.display = 'block';
+  } catch(e) { showErr('lab-error', '⚠ ' + e.message); }
+  btn.disabled = false; btn.textContent = '✦ Run Both + Get Psychology Analysis';
+}
+
+function copyAnalysis() { navigator.clipboard.writeText(document.getElementById('analysis-text').textContent).then(() => alert('Copied!')); }
+
+// ── CONTENT CALENDAR ─────────────────────────────────────
+let calData = [], calView = 'list', selIdx = -1;
+
+function setCalProgress(pct, step) {
+  document.getElementById('cal-body').innerHTML = `<div class="prog-box"><div class="prog-label">Building your calendar...</div><div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div><div class="prog-step">${step}</div></div>`;
+}
+
+function makeCalP(freq, month, half) {
+  const days = half === 1 ? '1 to 15' : '16 to 30';
+  const phase = half === 1 ? 'foundational and accessible' : 'deeper, bolder, more contrarian';
+  return `Medium content calendar. Niches: AI Business Writing, Entrepreneurship, Mindset, Psychology of Prompting. Frequency: ${freq}/week. Month: ${month}. Generate ONLY days ${days}. Style: ${phase}. Weekdays only. Rotate niches. Mix formats. Return JSON array of exactly 15 objects. Published: {"day":N,"dayName":"Monday","publish":true,"niche":"Entrepreneurship","title":"Title","hook":"Punchy opener","angle":"Unique argument","pillar":"Which pillar and why","format":"Story"}. Rest: {"day":N,"dayName":"Saturday","publish":false}. 15 objects only.`;
+}
+
+async function generateCal() {
+  const freq = document.getElementById('cal-freq').value;
+  const month = document.getElementById('cal-month').value;
+  const btn = document.getElementById('cal-btn');
+  btn.disabled = true; btn.textContent = '⟳ Generating...';
+  document.getElementById('cal-stats').style.display = 'none';
+  document.getElementById('cal-detail').style.display = 'none';
+  clearErr('cal-error'); calData = [];
+  const JSYS = 'Return ONLY a raw JSON array. No markdown. No code fences. Start with [ end with ].';
+  try {
+    setCalProgress(8, 'Planning weeks 1–2...');
+    const h1 = await claudeJSON(JSYS, makeCalP(freq, month, 1));
+    setCalProgress(55, 'Planning weeks 3–4...');
+    const h2 = await claudeJSON(JSYS, makeCalP(freq, month, 2));
+    calData = [...h1, ...h2].slice(0, 30);
+    if (calData.length < 10) throw new Error('Not enough data — please try again');
+    localStorage.setItem('cal-data', JSON.stringify(calData));
+    setCalProgress(100, 'Done!');
+    setTimeout(() => { renderCal(); updateCalStats(); }, 400);
+  } catch(e) {
+    showErr('cal-error', '⚠ ' + e.message);
+    document.getElementById('cal-body').innerHTML = '<div class="empty-state">Generation failed — check your API key and try again.</div>';
+  }
+  btn.disabled = false; btn.textContent = '↺ Regenerate';
+}
+
+function updateCalStats() {
+  const pub = calData.filter(d => d.publish);
+  document.getElementById('cs-total').textContent = pub.length;
+  document.getElementById('cs-pw').textContent = (pub.length/4).toFixed(1);
+  document.getElementById('cs-mpp').textContent = '$' + (pub.length * 9) + '+';
+  document.getElementById('cs-words').textContent = Math.round(pub.length*1.4) + 'k';
+  document.getElementById('cal-stats').style.display = 'grid';
+}
+
+function renderCal() { calView === 'list' ? renderCalList() : renderCalWeek(); }
+
+function renderCalList() {
+  const pub = calData.filter(d => d.publish);
+  if (!pub.length) { document.getElementById('cal-body').innerHTML = '<div class="empty-state">No articles found.</div>'; return; }
+  let html = '<div class="cal-list">';
+  calData.forEach((d, i) => {
+    if (!d.publish) return;
+    html += `<div class="cal-item" onclick="showCalDetail(${i})">
+      <div><div class="cal-day-num" style="color:${barColor(d.niche)}">${d.day}</div><div class="cal-day-name">${(d.dayName||'').slice(0,3)}</div></div>
+      <div><div class="cal-title">${d.title||''}</div><div class="cal-hook">${d.hook||''}</div></div>
+      <div class="cal-right"><span class="pill ${pillClass(d.niche)}">${shortN(d.niche)}</span><span class="cal-fmt">${d.format||''}</span></div>
+    </div>`;
+  });
+  document.getElementById('cal-body').innerHTML = html + '</div>';
+}
+
+function renderCalWeek() {
+  const dow = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  let html = '';
+  for (let w = 0; w < 4; w++) {
+    html += `<div class="week-block"><div class="wk-label">Week ${w+1}</div><div class="wk-grid">`;
+    dow.forEach(d => { html += `<div class="wk-head">${d}</div>`; });
+    calData.slice(w*7, w*7+7).forEach((d, di) => {
+      const i = w*7+di;
+      html += d.publish
+        ? `<div class="wk-cell" onclick="showCalDetail(${i})"><div class="wk-num">Day ${d.day}</div><div class="wk-title">${d.title||''}</div><div class="wk-bar" style="background:${barColor(d.niche)}"></div></div>`
+        : `<div class="wk-cell rest"><div class="wk-num">Day ${d.day}</div><div class="wk-rest">—</div></div>`;
+    });
+    html += '</div></div>';
+  }
+  document.getElementById('cal-body').innerHTML = html;
+}
+
+function showCalDetail(i) {
+  const d = calData[i]; if (!d || !d.publish) return;
+  selIdx = i;
+  document.getElementById('d-title').textContent = d.title||'';
+  document.getElementById('d-meta').innerHTML = `<span class="pill ${pillClass(d.niche)}">${shortN(d.niche)}</span> Day ${d.day} · ${d.dayName} · ${d.format}`;
+  document.getElementById('d-hook').textContent = d.hook||'';
+  document.getElementById('d-angle').textContent = d.angle||'';
+  document.getElementById('d-pillar').textContent = d.pillar||'';
+  document.getElementById('d-format').textContent = d.format||'';
+  document.getElementById('d-use').onclick = () => {
+    document.getElementById('g-topic').value = d.title||'';
+    document.getElementById('g-niche').value = d.niche||'AI Business Writing';
+    document.querySelectorAll('.nav-tab')[0].click();
+    alert('Topic loaded into Generator! Click Generate Article to write it.');
+  };
+  const panel = document.getElementById('cal-detail');
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function closeDetail() { document.getElementById('cal-detail').style.display = 'none'; selIdx = -1; }
+function copyCalBrief() {
+  if (selIdx < 0) return;
+  const d = calData[selIdx];
+  navigator.clipboard.writeText(`Day ${d.day} — ${d.dayName}\nNiche: ${d.niche}\nTitle: ${d.title}\nFormat: ${d.format}\nHook: ${d.hook}\nAngle: ${d.angle}\nPillar: ${d.pillar}`).then(() => alert('Copied!'));
+}
+function setCalView(v) {
+  calView = v;
+  document.getElementById('vt-list').classList.toggle('on', v==='list');
+  document.getElementById('vt-week').classList.toggle('on', v==='week');
+  if (calData.length) renderCal();
+}
+
+try { const s = localStorage.getItem('cal-data'); if (s) { calData = JSON.parse(s); } } catch(e) {}
+</script>
+</body>
+</html>
