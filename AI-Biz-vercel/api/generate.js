@@ -1,52 +1,37 @@
-// api/generate.js
-// Vercel Serverless Function — proxies Gemini so your API key stays secret
-// Set GEMINI_KEY in Vercel dashboard: Settings → Environment Variables
-
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { systemPrompt, userPrompt } = req.body;
-
-  if (!systemPrompt || !userPrompt) {
-    return res.status(400).json({ error: 'Missing systemPrompt or userPrompt' });
-  }
+  const { system, user } = req.body;
+  if (!system || !user) return res.status(400).json({ error: 'Missing system or user' });
 
   const GEMINI_KEY = process.env.GEMINI_KEY;
-  if (!GEMINI_KEY) {
-    return res.status(500).json({ error: 'Server misconfigured — GEMINI_KEY not set' });
-  }
+  if (!GEMINI_KEY) return res.status(500).json({ error: 'GEMINI_KEY not set in Vercel environment variables' });
 
   try {
-    const geminiRes = await fetch(
+    const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          system_instruction: { parts: [{ text: system }] },
+          contents: [{ role: 'user', parts: [{ text: user }] }],
           generationConfig: { maxOutputTokens: 2048, temperature: 0.8 }
         })
       }
     );
 
-    if (!geminiRes.ok) {
-      const err = await geminiRes.json();
+    if (!r.ok) {
+      const err = await r.json();
       return res.status(500).json({ error: err?.error?.message || 'Gemini error' });
     }
 
-    const data = await geminiRes.json();
+    const data = await r.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     return res.status(200).json({ text });
 
